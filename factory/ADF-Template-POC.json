@@ -1,0 +1,20 @@
+{
+	"name": "ADF-Template-POC",
+	"properties": {
+		"globalParameters": {
+			"source_filemask_1": {
+				"type": "string",
+				"value": "TradingData*.csv"
+			},
+			"windowStart": {
+				"type": "int",
+				"value": -30
+			},
+			"windowEnd": {
+				"type": "int",
+				"value": 0
+			}
+		}
+	},
+	"location": "uksouth"
+}

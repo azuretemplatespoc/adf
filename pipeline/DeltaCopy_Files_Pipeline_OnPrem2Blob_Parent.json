@@ -1,0 +1,89 @@
+{
+	"name": "DeltaCopy_Files_Pipeline_OnPrem2Blob_Parent",
+	"properties": {
+		"description": "Loop through directories and call base pipeline",
+		"activities": [
+			{
+				"name": "ForEach Directory",
+				"description": "Loop through list of directories to copy files from",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Lookup list of directories",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Lookup list of directories').output.value",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"activities": [
+						{
+							"name": "Execute Base DeltaCopy v2",
+							"description": "execute invoke pipeline from master pipeline with each directory",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "DeltaCopy_Files_Pipeline_OnPrem2Blob_Child",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"directory": {
+										"value": "@item().directoryname",
+										"type": "Expression"
+									},
+									"filemask": {
+										"value": "@item().filemask",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Lookup list of directories",
+				"description": "Read config file to get list of directories to iterate over",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AzureBlobStorageReadSettings",
+							"recursive": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"dataset": {
+						"referenceName": "DS_Blob_raw_config",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2020-10-29T14:41:41Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

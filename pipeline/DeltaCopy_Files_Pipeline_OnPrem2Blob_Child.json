@@ -1,0 +1,169 @@
+{
+	"name": "DeltaCopy_Files_Pipeline_OnPrem2Blob_Child",
+	"properties": {
+		"description": "Lookup with conditional delta copy to reduce cost if no copy from on-premises required",
+		"activities": [
+			{
+				"name": "LKP Source Check",
+				"description": "Lookup to check if any new/updated files exist",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "FileServerReadSettings",
+							"recursive": true,
+							"modifiedDatetimeStart": {
+								"value": "@addDays(utcNow(), pipeline().globalParameters.windowStart)",
+								"type": "Expression"
+							},
+							"modifiedDatetimeEnd": {
+								"value": "@addDays(utcNow(), pipeline().globalParameters.windowEnd)",
+								"type": "Expression"
+							},
+							"wildcardFolderPath": {
+								"value": "@pipeline().parameters.directory",
+								"type": "Expression"
+							},
+							"wildcardFileName": {
+								"value": "@pipeline().parameters.filemask",
+								"type": "Expression"
+							}
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"dataset": {
+						"referenceName": "DS_OnPrem_FileSystem",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "New or Updated files",
+				"description": "Run copy activity if new/updated files exist",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "LKP Source Check",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@contains(activity('LKP Source Check').output,'firstRow')",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "DeltaFileCopy",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "FileServerReadSettings",
+										"recursive": true,
+										"modifiedDatetimeStart": {
+											"value": "@addDays(utcNow(), pipeline().globalParameters.windowStart)",
+											"type": "Expression"
+										},
+										"modifiedDatetimeEnd": {
+											"value": "@addDays(utcNow(), pipeline().globalParameters.windowEnd)",
+											"type": "Expression"
+										},
+										"wildcardFolderPath": {
+											"value": "@pipeline().parameters.directory",
+											"type": "Expression"
+										},
+										"wildcardFileName": {
+											"value": "@pipeline().parameters.filemask",
+											"type": "Expression"
+										}
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"sink": {
+									"type": "DelimitedTextSink",
+									"storeSettings": {
+										"type": "AzureBlobStorageWriteSettings",
+										"copyBehavior": "PreserveHierarchy"
+									},
+									"formatSettings": {
+										"type": "DelimitedTextWriteSettings",
+										"quoteAllText": true,
+										"fileExtension": ".txt"
+									}
+								},
+								"enableStaging": false,
+								"validateDataConsistency": true,
+								"logStorageSettings": {
+									"linkedServiceName": {
+										"referenceName": "LS_BlobStorage",
+										"type": "LinkedServiceReference"
+									},
+									"path": "logs"
+								},
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DS_OnPrem_FileSystem",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DS_Blob_raw",
+									"type": "DatasetReference"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"directory": {
+				"type": "string"
+			},
+			"filemask": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2020-10-29T14:41:41Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
